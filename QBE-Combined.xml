@@ -1,0 +1,101 @@
+<export><workspace name="QBE-Combined"><query name="1. Create ReST HTTP Server" focus="false" listorder="1" taborder="1" active="true" database="6895143896771163861" server="5336528654269995911" database-name="Documents" server-name="App-Services" mode="xquery">xquery version "1.0-ml";
+
+declare variable $HOSTNAME as xs:string := xdmp:host-name(xdmp:host());
+declare variable $USERNAME as xs:string := "q";
+declare variable $PASSWORD as xs:string := "q";
+declare variable $DATABASE-NAME as xs:string := "QBE-Combined";
+declare variable $APP-SERVER-NAME as xs:string := "QBE-Combined";
+declare variable $APP-SERVER-PORT as xs:int := 8022;
+
+declare variable $CREATE-REST-HTTP-PAYLOAD := &lt;rest-api xmlns="http://marklogic.com/rest-api"&gt;
+    &lt;name&gt;{$APP-SERVER-NAME}&lt;/name&gt;
+    &lt;database&gt;{$DATABASE-NAME}&lt;/database&gt;
+    &lt;port&gt;{$APP-SERVER-PORT}&lt;/port&gt;
+&lt;/rest-api&gt;;
+
+xdmp:http-post("http://"||$HOSTNAME||":8002/LATEST/rest-apis",
+&lt;options xmlns="xdmp:http"&gt;
+    &lt;authentication method="digest"&gt;
+        &lt;username&gt;{$USERNAME}&lt;/username&gt;
+        &lt;password&gt;{$PASSWORD}&lt;/password&gt;
+    &lt;/authentication&gt;
+    &lt;data&gt;{xdmp:quote($CREATE-REST-HTTP-PAYLOAD)}&lt;/data&gt;
+    &lt;headers&gt;
+        &lt;content-type&gt;application/xml&lt;/content-type&gt;
+    &lt;/headers&gt;
+&lt;/options&gt;)</query><query name="2. Database Configure Indexes" focus="false" listorder="2" taborder="2" active="true" database="6895143896771163861" server="5336528654269995911" database-name="Documents" server-name="App-Services" mode="xquery">xquery version "1.0-ml";
+
+import module namespace admin = "http://marklogic.com/xdmp/admin" at "/MarkLogic/admin.xqy";
+
+declare variable $DATABASE-NAME as xs:string := "QBE-Combined";
+declare variable $INDEX-SPECIFICATION := admin:database-range-element-index("string", (), "title", "http://marklogic.com/collation/", fn:false());
+  
+admin:save-configuration(  
+  admin:database-add-range-element-index(admin:get-configuration(), xdmp:database($DATABASE-NAME), $INDEX-SPECIFICATION)
+)</query><query name="3. Create Book XML" focus="false" listorder="3" taborder="3" active="true" database="1546264695833970094" server="7074965279806869035" database-name="QBE-Combined" server-name="QBE-Combined" mode="xquery">xquery version "1.0-ml";
+
+(: Run against QBE-Combined database :)
+
+for $title at $pos in ("Life on the Mississippi", "Tom Sawyer", "The Mysterious Stranger", "Adventures of Huckleberry Finn", "The American Claimant", "Joan of Arc", "Roughing It", "Jumping Frog") 
+return 
+ 
+xdmp:document-insert("/book"||$pos||".xml",
+&lt;book&gt;
+  &lt;title&gt;{$title}&lt;/title&gt;
+  &lt;author&gt;Mark Twain&lt;/author&gt;
+  &lt;edition format="paperback"&gt;
+    &lt;publisher&gt;Clipper&lt;/publisher&gt;
+    &lt;pub-date&gt;2011-08-01&lt;/pub-date&gt;
+    &lt;price&gt;{xdmp:random(9)||".99"}&lt;/price&gt;
+    &lt;isbn&gt;{fn:substring(xs:string(xdmp:random()), 1, 13)}&lt;/isbn&gt;
+  &lt;/edition&gt;
+&lt;/book&gt;)
+</query><query name="4. Test range index" focus="false" listorder="4" taborder="4" active="true" database="1546264695833970094" server="7074965279806869035" database-name="QBE-Combined" server-name="QBE-Combined" mode="xquery">xquery version "1.0-ml";
+
+(: Run against QBE-Combined database :)
+
+cts:element-values(xs:QName("title"))</query><query name="5. Run QBE Query" focus="true" listorder="5" taborder="5" active="true" database="1546264695833970094" server="7074965279806869035" database-name="QBE-Combined" server-name="QBE-Combined" mode="xquery">xquery version "1.0-ml";
+
+declare namespace search = "http://marklogic.com/appservices/search";
+
+declare variable $HOSTNAME as xs:string := xdmp:host-name(xdmp:host());
+declare variable $USERNAME as xs:string := "q";
+declare variable $PASSWORD as xs:string := "q";
+declare variable $APP-SERVER-PORT as xs:int := 8022;
+
+declare variable $QBE as element(search:search) := &lt;search:search xmlns:search="http://marklogic.com/appservices/search"&gt;
+
+    &lt;!-- QBE Query --&gt;
+    &lt;qbe:query xmlns:qbe="http://marklogic.com/appservices/querybyexample"&gt;
+        &lt;author&gt;Mark Twain&lt;/author&gt;
+    &lt;/qbe:query&gt;
+  
+    &lt;search:options&gt;
+        &lt;!-- control what gets returned from the document --&gt;
+        &lt;search:extract-document-data&gt;
+            &lt;search:extract-path&gt;/book/title&lt;/search:extract-path&gt;
+        &lt;/search:extract-document-data&gt;
+    
+        &lt;!-- control ordering --&gt;
+        &lt;search:sort-order type="xs:string" collation="http://marklogic.com/collation/" direction="descending"&gt;
+            &lt;search:element ns="" name="title"/&gt;
+        &lt;/search:sort-order&gt;
+
+        &lt;!-- additional options --&gt;
+        &lt;search:search-option&gt;filtered&lt;/search:search-option&gt;
+  &lt;/search:options&gt;
+
+&lt;/search:search&gt;;
+
+
+xdmp:http-post("http://"||$HOSTNAME||":"||$APP-SERVER-PORT||"/LATEST/search",
+&lt;options xmlns="xdmp:http"&gt;
+    &lt;authentication method="digest"&gt;
+        &lt;username&gt;{$USERNAME}&lt;/username&gt;
+        &lt;password&gt;{$PASSWORD}&lt;/password&gt;
+    &lt;/authentication&gt;
+    &lt;data&gt;{xdmp:quote($QBE)}&lt;/data&gt;
+    &lt;headers&gt;
+        &lt;content-type&gt;application/xml&lt;/content-type&gt;
+    &lt;/headers&gt;
+&lt;/options&gt;)</query></workspace></export>
