@@ -1,0 +1,134 @@
+<export><workspace name="QBE-Example Two"><query name="1. Create ReST Endpoint" focus="false" listorder="1" taborder="1" active="true" database="3755553544681809497" server="4445319214134389537" database-name="Documents" server-name="App-Services" mode="xquery">xquery version "1.0-ml";
+
+declare variable $HOSTNAME as xs:string := xdmp:host-name(xdmp:host());
+declare variable $USERNAME as xs:string := "q";
+declare variable $PASSWORD as xs:string := "q";
+declare variable $DATABASE-NAME as xs:string := "Example-Search";
+declare variable $APP-SERVER-NAME as xs:string := "Example-Search";
+declare variable $APP-SERVER-PORT as xs:int := 8024;
+
+declare variable $CREATE-REST-HTTP-PAYLOAD := &lt;rest-api xmlns="http://marklogic.com/rest-api"&gt;
+    &lt;name&gt;{$APP-SERVER-NAME}&lt;/name&gt;
+    &lt;database&gt;{$DATABASE-NAME}&lt;/database&gt;
+    &lt;port&gt;{$APP-SERVER-PORT}&lt;/port&gt;
+&lt;/rest-api&gt;;
+
+xdmp:http-post("http://"||$HOSTNAME||":8002/LATEST/rest-apis",
+&lt;options xmlns="xdmp:http"&gt;
+    &lt;authentication method="digest"&gt;
+        &lt;username&gt;{$USERNAME}&lt;/username&gt;
+        &lt;password&gt;{$PASSWORD}&lt;/password&gt;
+    &lt;/authentication&gt;
+    &lt;data&gt;{xdmp:quote($CREATE-REST-HTTP-PAYLOAD)}&lt;/data&gt;
+    &lt;headers&gt;
+        &lt;content-type&gt;application/xml&lt;/content-type&gt;
+    &lt;/headers&gt;
+&lt;/options&gt;)</query><query name="2. Load Customer Provided Data" focus="false" listorder="2" taborder="2" active="true" database="3755553544681809497" server="4445319214134389537" database-name="Documents" server-name="App-Services" mode="xquery">xquery version "1.0-ml";
+
+(: Run against Example-Search :)
+
+for $i in xdmp:filesystem-directory("e:\workspace\documents")/dir:entry
+return xdmp:document-load(fn:data($i/dir:pathname),
+&lt;options xmlns="xdmp:document-load"&gt;
+  &lt;format&gt;json&lt;/format&gt;
+&lt;/options&gt;
+)</query><query name="3. Create Range Index" focus="false" listorder="3" taborder="3" active="true" database="3755553544681809497" server="4445319214134389537" database-name="Documents" server-name="App-Services" mode="xquery">xquery version "1.0-ml";
+
+import module namespace admin = "http://marklogic.com/xdmp/admin" at "/MarkLogic/admin.xqy";
+
+declare variable $DATABASE-NAME as xs:string := "Example-Search";
+declare variable $INDEX-SPECIFICATION := admin:database-range-element-index("int", (), "reviewedCount", (), fn:false());
+  
+admin:save-configuration(  
+  admin:database-add-range-element-index(admin:get-configuration(), xdmp:database($DATABASE-NAME), $INDEX-SPECIFICATION)
+)
+</query><query name="4. Search (Ascending)" focus="false" listorder="4" taborder="4" active="true" database="3755553544681809497" server="4445319214134389537" database-name="Documents" server-name="App-Services" mode="javascript">'use strict';
+
+const HOSTNAME = xdmp.hostName(xdmp.host()); 	
+const USERNAME = "q";
+const PASSWORD = "q";
+const PORT = 8024;
+
+const OPTIONS = {
+    "authentication": {
+        "method" : "digest",
+        "username" : USERNAME,
+        "password" : PASSWORD
+    },
+    "headers": {
+        "Content-Type" : "application/json",
+        "Accept" : "application/json"
+    }
+};
+
+const URI = "http://" + HOSTNAME + ":" + PORT + "/LATEST/search";
+
+const QUERY = {
+    "search" : {
+        "$query" : {
+            "ID" : 1
+        },
+        "options": {
+            "extract-document-data": {
+                "extract-path" : "/reviewedCount"
+            },
+            "sort-order": [ {
+                "direction": "ascending",              
+                "element": { "name": "reviewedCount" }
+            } ],
+            "search-option": ["filtered"]
+            // "debug" : "true"
+        }
+    } 
+};
+
+xdmp.httpPost(URI, OPTIONS, QUERY)
+</query><query name="6. Expressed as a CTS Search" focus="true" listorder="6" taborder="6" active="true" database="3755553544681809497" server="4445319214134389537" database-name="Documents" server-name="App-Services" mode="javascript">'use strict';
+
+cts.search(cts.jsonPropertyValueQuery("ID", 1), 
+  [
+    "unfiltered",
+    cts.indexOrder(cts.elementReference(fn.QName("", "reviewedCount")), "ascending")
+  ] 
+)</query><query name="5. Search (Descending)" focus="false" listorder="5" taborder="5" active="true" database="3755553544681809497" server="4445319214134389537" database-name="Documents" server-name="App-Services" mode="javascript">'use strict';
+
+const HOSTNAME = xdmp.hostName(xdmp.host()); 	
+const USERNAME = "q";
+const PASSWORD = "q";
+const PORT = 8024;
+
+const OPTIONS = {
+    "authentication": {
+        "method" : "digest",
+        "username" : USERNAME,
+        "password" : PASSWORD
+    },
+    "headers": {
+        "Content-Type" : "application/json",
+        "Accept" : "application/json"
+    }
+};
+
+const URI = "http://" + HOSTNAME + ":" + PORT + "/LATEST/search";
+
+const QUERY = {
+    "search" : {
+        "$query" : {
+            "ID" : 1
+        },
+        "options": {
+            "extract-document-data": {
+                "extract-path" : "/reviewedCount"
+            },
+            "sort-order": [ {
+                "direction": "descending",              
+                "element": { "name": "reviewedCount" }
+            } ],
+            "search-option": ["filtered"]
+            // "debug" : "true"
+        }
+    } 
+};
+
+xdmp.httpPost(URI, OPTIONS, QUERY)
+</query></workspace></export>
