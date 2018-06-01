@@ -1,0 +1,208 @@
+<export><workspace name="Creating Docs and Metadata using ReST"><query name="1. Create ReST AppServer Endpoint" focus="false" listorder="1" taborder="1" active="true" database="3755553544681809497" server="4445319214134389537" database-name="Documents" server-name="App-Services" mode="javascript">'use strict';
+
+const HOSTNAME = xdmp.hostName(xdmp.host()); 	
+const USERNAME = "q";
+const PASSWORD = "q";
+const PORT = 8025;
+const DATABASE_NAME = "20324";
+const APP_SERVER_NAME = "http-20324";
+
+const OPTIONS = {
+    "authentication": {
+        "method" : "digest",
+        "username" : USERNAME,
+        "password" : PASSWORD
+    },
+    "headers": {
+        "Content-Type" : "application/json",
+        "Accept" : "application/json"
+    }
+};
+
+const URI = "http://" + HOSTNAME + ":8002" + "/LATEST/rest-apis";
+
+const PAYLOAD = {
+  "rest-api": {
+    "name": APP_SERVER_NAME,
+    "database": DATABASE_NAME,
+    "port": PORT
+  }
+};
+
+xdmp.httpPost(URI, OPTIONS, PAYLOAD)
+</query><query name="2. Example One" focus="false" listorder="2" taborder="2" active="true" database="7394763430621991190" server="17843620348764524392" database-name="20324" server-name="http-20324" mode="javascript">'use strict';
+
+// Example 1: using the lower level https://docs.marklogic.com/xdmp:document-set-metadata call as referenced in the documentation
+// JavaScript/JSON version: https://docs.marklogic.com/xdmp.documentSetMetadata
+
+declareUpdate();
+
+// 1. Create a doc
+
+xdmp.documentInsert('/test.json', {json:'json'})
+
+// 2. Create Metadata
+
+xdmp.documentSetMetadata("/test.json", {metadata : "metadata"})
+
+// 3. Get the Metadata
+
+xdmp.documentGetMetadata("/test.json")</query><query name="3. Example Two" focus="true" listorder="3" taborder="3" active="true" database="7394763430621991190" server="17843620348764524392" database-name="20324" server-name="http-20324" mode="javascript">'use strict';
+
+/* Example 2: Shows how you create the metadata as part of the URL request (as an argument appended to the URL :- &amp;value:metadata=metadata) */
+
+const HOSTNAME = xdmp.hostName(xdmp.host()); 	
+const USERNAME = "q";
+const PASSWORD = "q";
+const PORT = 8025;
+
+const OPTIONS = {
+    "authentication": {
+        "method" : "digest",
+        "username" : USERNAME,
+        "password" : PASSWORD
+    },
+    "headers": {
+        "Content-Type" : "application/json",
+        "Accept" : "application/json"
+    }
+};
+
+const URI = "http://" + HOSTNAME + ":" + PORT + "/LATEST/documents?uri=/test2.json&amp;value:metadata=metadata";
+
+const JSON_PAYLOAD = {
+  "json": {
+    "json-node1": "json-node1",
+    "json-node2": "json-node2",
+    "json-node3": "json-node3",
+  }
+};
+
+xdmp.httpPut(URI, OPTIONS, JSON_PAYLOAD)
+</query><query name="4. Example Three (JSON/Multipart)" focus="false" listorder="5" taborder="5" active="true" database="7394763430621991190" server="17843620348764524392" database-name="20324" server-name="http-20324" mode="javascript">'use strict';
+
+/* Example 3: Shows how you create the metadata as part of a multipart/mixed HTTP request
+   See: https://docs.marklogic.com/guide/rest-dev/bulk#id_88873 for details about constructing the request
+   And: https://docs.marklogic.com/guide/rest-dev/documents#id_94456 for the JSON metadata format */
+
+const HOSTNAME = xdmp.hostName(xdmp.host()); 	
+const USERNAME = "q";
+const PASSWORD = "q";
+const PORT = 8025;
+
+const OPTIONS = {
+    "authentication": {
+        "method" : "digest",
+        "username" : USERNAME,
+        "password" : PASSWORD
+    },
+    "headers": {
+        "Content-Type" : "multipart/mixed; boundary=BOUNDARY",       
+    }
+};
+
+const URI = "http://" + HOSTNAME + ":" + PORT + "/LATEST/documents?uri=/test3.json&amp;category=content&amp;category=metadata-values";
+
+const MANIFEST = [
+    {
+      "headers": {
+        "Content-Type":"application/json",
+        "Content-Disposition" : "inline; category=metadata"
+      }
+    },
+    {
+      "headers": {
+        "Content-Type":"application/json",
+        "Content-Disposition" : "inline;"
+      }
+    }
+  ];
+
+const JSON_DOC = {
+  "json": {
+    "json-node1": "json-node1",
+    "json-node2": "json-node2",
+    "json-node3": "json-node3",
+  }
+};
+
+const JSON_METADATA = {
+  "metadataValues" : {"metadata": "metadata"}
+};
+
+const JSON_DATA = [xdmp.toJSON(JSON_METADATA), xdmp.toJSON(JSON_DOC)];
+
+xdmp.httpPut(URI, OPTIONS, 
+  xdmp.multipartEncode("BOUNDARY", MANIFEST, JSON_DATA)
+)  </query><query name="3b. Test Example Two" focus="false" listorder="4" taborder="4" active="true" database="7394763430621991190" server="17843620348764524392" database-name="20324" server-name="http-20324" mode="javascript">'use strict';
+
+const items = [];
+
+items.push(
+  fn.doc("/test2.json"),
+  xdmp.documentGetMetadata("/test2.json")
+);
+
+items;</query><query name="5. Example Four (XML/Multipart)" focus="false" listorder="7" taborder="7" active="true" database="7394763430621991190" server="17843620348764524392" database-name="20324" server-name="http-20324" mode="xquery">xquery version "1.0-ml";
+
+(: This is the same as Example Three - it shows how you create the metadata as part of a multipart/mixed HTTP request
+   In this case, the properties are in XML format as per: https://docs.marklogic.com/guide/rest-dev/documents#id_73546
+:)
+
+declare variable $HOSTNAME as xs:string := xdmp:host-name(xdmp:host());
+declare variable $USERNAME as xs:string := "q";
+declare variable $PASSWORD as xs:string := "q";
+declare variable $PORT as xs:int := 8025;
+
+declare variable $URI := "http://" || $HOSTNAME || ":" || $PORT || "/LATEST/documents?uri=/test.xml&amp;amp;category=content&amp;amp;category=metadata-values";
+
+declare variable $OPTIONS := &lt;options xmlns="xdmp:http"&gt;
+    &lt;authentication method="digest"&gt;
+        &lt;username&gt;{$USERNAME}&lt;/username&gt;
+        &lt;password&gt;{$PASSWORD}&lt;/password&gt;
+    &lt;/authentication&gt;
+    &lt;headers&gt;
+        &lt;accept&gt;application/xml&lt;/accept&gt;
+        &lt;Content-Type&gt;multipart/mixed; boundary=BOUNDARY&lt;/Content-Type&gt;
+    &lt;/headers&gt;
+&lt;/options&gt;;
+
+declare variable $MANIFEST :=  &lt;manifest&gt;    
+     &lt;part&gt;         
+       &lt;headers&gt;
+          &lt;Content-Type&gt;application/xml&lt;/Content-Type&gt;
+          &lt;Content-Disposition&gt;inline; category=metadata&lt;/Content-Disposition&gt;
+       &lt;/headers&gt;
+     &lt;/part&gt;
+     &lt;part&gt; 
+       &lt;headers&gt;
+          &lt;Content-Type&gt;application/xml&lt;/Content-Type&gt;
+          &lt;Content-Disposition&gt;inline;&lt;/Content-Disposition&gt;
+       &lt;/headers&gt;
+     &lt;/part&gt;
+  &lt;/manifest&gt;;
+
+declare variable $DOC := &lt;test&gt;&lt;one&gt;two&lt;/one&gt;&lt;/test&gt;;
+
+declare variable $METADATA := &lt;metadata xmlns="http://marklogic.com/rest-api"&gt;
+  &lt;metadata-values&gt;
+    &lt;metadata-value key="keyName"&gt;my-value&lt;/metadata-value&gt;
+  &lt;/metadata-values&gt;
+&lt;/metadata&gt;;
+
+
+xdmp:http-put($URI, $OPTIONS, 
+  xdmp:multipart-encode("BOUNDARY", $MANIFEST, ($METADATA, $DOC))
+) </query><query name="5b. Test Example Four" focus="false" listorder="8" taborder="8" active="true" database="7394763430621991190" server="17843620348764524392" database-name="20324" server-name="http-20324" mode="xquery">xquery version "1.0-ml";
+
+doc("/test.xml"),
+xdmp:document-get-metadata("/test.xml")</query><query name="4b. Test Example Three" focus="false" listorder="6" taborder="6" active="true" database="7394763430621991190" server="17843620348764524392" database-name="20324" server-name="http-20324" mode="javascript">'use strict';
+
+const items = [];
+
+items.push(
+  fn.doc("/test3.json"),
+  xdmp.documentGetMetadata("/test3.json")
+);
+
+items;</query></workspace></export>
